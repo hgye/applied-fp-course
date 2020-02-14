@@ -44,16 +44,24 @@ import           Network.HTTP.Types as HTTP
 -- | This import is provided for you so you can check your work from Level02. As
 -- you move forward, come back and import your latest 'Application' so that you
 -- can test your work as you progress.
-import qualified Level02.Core       as Core
+import qualified Level01.Core       as Core
 
 main :: IO ()
 main = defaultMain $ testGroup "Applied FP Course - Tests"
 
-  [ testWai Core.app "List Topics" $
-      get "fudge/view" >>= assertStatus' HTTP.status200
-
-  , testWai Core.app "Empty Input" $ do
-      resp <- post "fudge/add" ""
-      assertStatus' HTTP.status400 resp
-      assertBody "Empty Comment Text" resp
+  [ testWai Core.app "status" $
+    get "abc" >>= assertStatus' HTTP.status200
+  , testWai Core.app "body" $ do
+      resp <- get "abcd"
+      assertStatus' HTTP.status200 resp
+      assertBody "Hello, World!" resp
   ]
+
+  -- [ testWai Core.app "List Topics" $
+  --     get "fudge/view" >>= assertStatus' HTTP.status200
+
+  -- , testWai Core.app "Empty Input" $ do
+  --     resp <- post "fudge/add" ""
+  --     assertStatus' HTTP.status400 resp
+  --     assertBody "Empty Comment Text" resp
+  -- ]
