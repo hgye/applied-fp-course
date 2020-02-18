@@ -5,7 +5,7 @@ module Level02.Types
   , CommentText
   , ContentType (..)
   , RqType (..)
-  , Error (..)
+  , Error (EmptyTopic, EmptyComment)
   , mkTopic
   , getTopic
   , mkCommentText
@@ -56,15 +56,25 @@ newtype CommentText = CommentText Text
 -- AddRq : Which needs the target topic, and the body of the comment.
 -- ViewRq : Which needs the topic being requested.
 -- ListRq : Which doesn't need anything and lists all of the current topics.
-data RqType
+data RqType = AddRq Topic CommentText
+  | ViewRq Topic
+  | ListRq
+  deriving Show
+
+-- addRq :: Topic -> CommentText -> [RqType] -> [RqType]
+-- addRq t c r = RqType t c : r
+
+-- viewRq :: RqType -> Topic
+-- viewRq (RqType t _) = t
 
 -- Not everything goes according to plan, but it's important that our types
 -- reflect when errors can be introduced into our program. Additionally it's
 -- useful to be able to be descriptive about what went wrong.
 
 -- Fill in the error constructors as you need them.
-data Error
-
+data Error = EmptyTopic
+           | EmptyComment
+           deriving Show
 
 -- Provide the constructors for a sum type to specify the `ContentType` Header,
 -- to be used when we build our Response type. Our application will be simple,
@@ -72,7 +82,9 @@ data Error
 --
 -- - plain text
 -- - json
-data ContentType
+data ContentType = Plain
+                 | Json
+                 deriving Show
 
 -- The ``ContentType`` constructors don't match what is required for the header
 -- information. Because ``wai`` uses a stringly type. So write a function that
@@ -88,8 +100,11 @@ data ContentType
 renderContentType
   :: ContentType
   -> ByteString
-renderContentType =
-  error "renderContentType not implemented"
+renderContentType c = case c of 
+ Plain -> "text/plain"
+ Json -> "application/json"
+--   (Plain _) = "text/plain"
+-- renderContentType (Json _) = "application/json"
 
 -- We can choose to *not* export the constructor for a data type and instead
 -- provide a function of our own. In our case, we're not interested in empty
@@ -102,25 +117,23 @@ renderContentType =
 mkTopic
   :: Text
   -> Either Error Topic
-mkTopic =
-  error "mkTopic not implemented"
+mkTopic "" = Left EmptyTopic
+mkTopic t = Right $ Topic t
 
 getTopic
   :: Topic
   -> Text
-getTopic =
-  error "getTopic not implemented"
+getTopic (Topic t) = t
 
 mkCommentText
   :: Text
   -> Either Error CommentText
-mkCommentText =
-  error "mkCommentText not implemented"
+mkCommentText "" = Left EmptyComment
+mkCommentText t = Right $ CommentText t
 
 getCommentText
   :: CommentText
   -> Text
-getCommentText =
-  error "getCommentText not implemented"
+getCommentText (CommentText t) = t
 
 ---- Go to `src/Level02/Core.hs` next
