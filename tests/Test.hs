@@ -47,7 +47,10 @@ import           Network.HTTP.Types as HTTP
 import qualified Level02.Core       as Core
 
 main :: IO ()
-main = defaultMain $ testGroup "Applied FP Course - Tests"
+main = defaultMain $
+  testGroup "tests"
+  [
+  testGroup "Applied FP Course - Tests"
 
   [ testWai Core.app "List Topics" $
       get "fudge/view" >>= assertStatus' HTTP.status200
@@ -56,4 +59,9 @@ main = defaultMain $ testGroup "Applied FP Course - Tests"
       resp <- post "fudge/add" ""
       assertStatus' HTTP.status400 resp
       assertBody "Empty Comment Text" resp
+  ]
+  -- , testGroup "Unit tests"
+  --   [ HU.testCase "mkAddRequest"
+  --      Core.mkAddRequest "abc" "" @=? EmptyComment
+  --   ]
   ]

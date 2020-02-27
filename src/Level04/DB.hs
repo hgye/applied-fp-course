@@ -14,6 +14,7 @@ import           Data.Text                          (Text)
 import qualified Data.Text                          as Text
 
 import           Data.Time                          (getCurrentTime)
+--import           Data.Bifunctor                     (second)
 
 import           Database.SQLite.Simple             (Connection, Query (Query))
 import qualified Database.SQLite.Simple             as Sql
@@ -22,7 +23,9 @@ import qualified Database.SQLite.SimpleErrors       as Sql
 import           Database.SQLite.SimpleErrors.Types (SQLiteResponse)
 
 import           Level04.Types                      (Comment, CommentText,
-                                                     Error, Topic)
+                                                     Error (..), Topic, 
+                                                     fromDBComment, getTopic,
+                                                     getCommentText, mkTopic)
 
 -- ------------------------------------------------------------------------------|
 -- You'll need the documentation for sqlite-simple & sqlite-simple-errors handy! |
@@ -43,8 +46,7 @@ data FirstAppDB = FirstAppDB
 closeDB
   :: FirstAppDB
   -> IO ()
-closeDB =
-  error "closeDB not implemented"
+closeDB = Sql.close . dbConn
 
 -- Given a `FilePath` to our SQLite DB file, initialise the database and ensure
 -- our Table is there by running a query to create it, if it doesn't exist
@@ -52,8 +54,10 @@ closeDB =
 initDB
   :: FilePath
   -> IO ( Either SQLiteResponse FirstAppDB )
-initDB fp =
-  error "initDB not implemented (use Sql.runDBAction to catch exceptions)"
+initDB fp = do
+  conn <- Sql.open fp
+  Sql.execute_ conn createTableQ
+  Sql.runDBAction (pure (FirstAppDB conn))
   where
   -- Query has an `IsString` instance so string literals like this can be
   -- converted into a `Query` type when the `OverloadedStrings` language
@@ -74,7 +78,7 @@ getComments
   :: FirstAppDB
   -> Topic
   -> IO (Either Error [Comment])
-getComments =
+getComments dc t =
   let
     sql = "SELECT id,topic,comment,time FROM comments WHERE topic = ?"
   -- There are several possible implementations of this function. Particularly
@@ -82,34 +86,56 @@ getComments =
   -- cannot be converted to a Comment, or simply ignoring any DBComment that is
   -- not valid.
   in
-    error "getComments not implemented (use Sql.runDBAction to catch exceptions)"
+    do
+      r <- Sql.runDBAction $  Sql.query (dbConn dc) sql (Sql.Only (getTopic t))
+      case r of
+        Left _ -> pure $ Left InvalidSql
+        Right r' -> pure $ mapM fromDBComment r'
+    -- error "getComments not implemented (use Sql.runDBAction to catch exceptions)"
 
 addCommentToTopic
   :: FirstAppDB
   -> Topic
   -> CommentText
   -> IO (Either Error ())
-addCommentToTopic =
+addCommentToTopic dc t c =
   let
     sql = "INSERT INTO comments (topic,comment,time) VALUES (?,?,?)"
   in
-    error "addCommentToTopic not implemented (use Sql.runDBAction to catch exceptions)"
+    do
+      time <- getCurrentTime
+      r <- Sql.runDBAction $
+           Sql.execute (dbConn dc) sql (getTopic t, getCommentText c, time)
+      case r of
+        Left _ -> pure $ Left InvalidSql
+        Right r' -> pure . pure $ r'
+    --error "addCommentToTopic not implemented (use Sql.runDBAction to catch exceptions)"
 
 getTopics
   :: FirstAppDB
   -> IO (Either Error [Topic])
-getTopics =
+getTopics dc =
   let
     sql = "SELECT DISTINCT topic FROM comments"
   in
-    error "getTopics not implemented (use Sql.runDBAction to catch exceptions)"
+    do
+      r <- Sql.runDBAction $ Sql.query_ (dbConn dc) sql
+      case r of
+        Left _ -> pure $ Left InvalidSql
+        Right r' -> (pure . pure) r'
+    -- error "getTopics not implemented (use Sql.runDBAction to catch exceptions)"
 
 deleteTopic
   :: FirstAppDB
   -> Topic
   -> IO (Either Error ())
-deleteTopic =
+deleteTopic dc t =
   let
     sql = "DELETE FROM comments WHERE topic = ?"
   in
-    error "deleteTopic not implemented (use Sql.runDBAction to catch exceptions)"
+    do
+      r <- Sql.runDBAction $ Sql.execute (dbConn dc) sql (Sql.Only (getTopic t))
+      case r of
+        Left _ -> pure $ Left InvalidSql
+        _ -> (pure . pure) ()
+    -- error "deleteTopic not implemented (use Sql.runDBAction to catch exceptions)"

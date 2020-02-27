@@ -12,10 +12,14 @@ import           Data.Functor.Contravariant (contramap)
 import           Data.Text                  (Text)
 
 import           Level04.Types.Error        (Error (EmptyTopic), nonEmptyText)
+import           Database.SQLite.Simple.FromRow (FromRow (fromRow), field)
 
 newtype Topic = Topic Text
   deriving Show
 
+instance FromRow Topic where
+  fromRow = Topic <$> field
+ 
 mkTopic
   :: Text
   -> Either Error Topic
@@ -61,4 +65,4 @@ getTopic (Topic t) =
 --
 encodeTopic :: Applicative f => Encoder f Topic
 encodeTopic = -- Try using 'contramap' and 'E.text'
-  error "topic JSON encoder not implemented"
+  contramap getTopic E.text

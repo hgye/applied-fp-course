@@ -54,4 +54,4 @@ getCommentText (CommentText t) =
 --
 encodeCommentText :: Applicative f => Encoder f CommentText
 encodeCommentText = -- Try using 'contramap' and 'E.text'.
-  error "CommentText JSON encoder not implemented"
+  contramap getCommentText E.text

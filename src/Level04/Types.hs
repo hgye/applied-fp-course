@@ -1,6 +1,7 @@
 {-# LANGUAGE DeriveGeneric              #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings          #-}
+--{-# LANGUAGE FlexibleContexts #-}
 module Level04.Types
   ( Error (..)
   , RqType (..)
@@ -10,8 +11,10 @@ module Level04.Types
   , Comment (..)
   , mkTopic
   , getTopic
+  , encodeTopic
   , mkCommentText
   , getCommentText
+  , encodeComment
   , renderContentType
   , fromDBComment
   ) where
@@ -32,7 +35,7 @@ import qualified Data.Time.Format           as TF
 import           Waargonaut.Encode          (Encoder)
 import qualified Waargonaut.Encode          as E
 
-import           Level04.DB.Types           (DBComment)
+import           Level04.DB.Types           (DBComment (..))
 
 -- | Notice how we've moved these types into their own modules. It's cheap and
 -- easy to add modules to carve out components in a Haskell application. So
@@ -41,12 +44,16 @@ import           Level04.DB.Types           (DBComment)
 -- just spin up another module.
 import           Level04.Types.CommentText  (CommentText, getCommentText,
                                              mkCommentText)
-import           Level04.Types.Topic        (Topic, getTopic, mkTopic)
+import           Level04.Types.Topic        (Topic, getTopic, mkTopic, encodeTopic)
 
-import           Level04.Types.Error        (Error (EmptyCommentText, EmptyTopic, UnknownRoute))
+--import           Level04.Types.Error        (Error (EmptyCommentText, EmptyTopic, UnknownRoute))
+import           Level04.Types.Error        (Error (..))
 
 newtype CommentId = CommentId Int
   deriving (Eq, Show)
+
+getCommentId :: CommentId -> Int
+getCommentId (CommentId i) = i
 
 -- | This is the `Comment` record that we will be sending to users, it's a
 -- straightforward record type, containing an `Int`, `Topic`, `CommentText`, and
@@ -67,7 +74,16 @@ data Comment = Comment
 --
 encodeComment :: Applicative f => Encoder f Comment
 encodeComment =
-  error "Comment JSON encoder not implemented"
+  E.mapLikeObj $ \_comment ->
+  E.intAt "Id" (getCommentId . commentId $ _comment) .
+  E.textAt "Topic" (getTopic . commentTopic $ _comment) .
+  E.textAt "Body" (getCommentText  . commentBody $ _comment) .
+  E.textAt "Time" (pack . show . commentTime $ _comment)
+  -- Comment <$>
+  -- (getCommentId >$< E.int) <*>
+  -- (getTopic >$< E.text) <*>
+  -- (getCommentText >$< E.text) <*>
+  -- encodeISO8601DateTime
   -- Tip: Use the 'encodeISO8601DateTime' to handle the UTCTime for us.
 
 -- | For safety we take our stored `DBComment` and try to construct a `Comment`
@@ -77,8 +93,13 @@ encodeComment =
 fromDBComment
   :: DBComment
   -> Either Error Comment
-fromDBComment =
-  error "fromDBComment not yet implemented"
+fromDBComment dc = Comment ((CommentId . dbCommentId) dc)
+  <$>
+  (mkTopic . dbCommentTopic) dc
+  <*>
+  (mkCommentText . dbCommentBody) dc
+  <*>
+  Right (dbCommentTime dc)
 
 data RqType
   = AddRq Topic CommentText
