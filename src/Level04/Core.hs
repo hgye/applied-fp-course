@@ -150,15 +150,17 @@ handleRequest _db (AddRq t c) =
   (resp200 PlainText "Success" <$) <$> DB.addCommentToTopic _db t c
   --error "AddRq handler not implemented"
 handleRequest _db (ViewRq t)  =
-  do
-    cs <- DB.getComments _db t
-    pure $ second (resp200Json . E.list $ encodeComment) cs
+  second (resp200Json . E.list $ encodeComment) <$> DB.getComments _db t
+  -- do
+    -- cs <- DB.getComments _db t
+    -- pure $ second (resp200Json . E.list $ encodeComment) cs
   -- getComments _db t 
   --error "ViewRq handler not implemented"
 handleRequest _db ListRq      =
-  do
-    ts <- DB.getTopics _db
-    pure $ second (resp200Json $ E.list encodeTopic) ts
+  second (resp200Json $ E.list encodeTopic) <$> DB.getTopics _db
+  -- do
+    -- ts <- DB.getTopics _db
+    -- pure $ second (resp200Json $ E.list encodeTopic) ts
   -- error "ListRq handler not implemented"
 
 mkRequest
