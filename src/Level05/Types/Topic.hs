@@ -12,9 +12,13 @@ import           Level05.Types.Error        (Error (EmptyTopic), nonEmptyText)
 
 import           Data.Functor.Contravariant ((>$<))
 import           Data.Text                  (Text)
+import           Database.SQLite.Simple.FromRow (FromRow (fromRow), field)
 
 newtype Topic = Topic Text
   deriving Show
+
+instance FromRow Topic where
+  fromRow = Topic <$> field
 
 encodeTopic :: Applicative f => Encoder f Topic
 encodeTopic = getTopic >$< E.text
