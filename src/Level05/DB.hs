@@ -30,7 +30,7 @@ import           Level05.Types                      (Comment, CommentText,
                                                      getCommentText, getTopic,
                                                      mkTopic)
 
-import           Level05.AppM                       (AppM(..) )
+import           Level05.AppM                       (AppM, liftEither)
 
 -- We have a data type to simplify passing around the information we need to run
 -- our database queries. This also allows things to change over time without
@@ -74,7 +74,13 @@ runDB f x =
   -- the catching of any errors. As well as the process of running some
   -- processing function over those results.
   --error "Write 'runDB' to match the type signature"
-  AppM $ f <$> x
+  -- AppM $ f <$> x
+  do
+  r <- liftIO $ first DBError <$> Sql.runDBAction x
+  liftEither $ f =<< r
+  -- case resp of
+    -- Left e ->  DBError e
+    -- Right y -> f y
   -- Move your use of DB.runDBAction to this function to avoid repeating
   -- yourself in the various DB functions.
 

@@ -59,11 +59,15 @@ parseOptions
 parseOptions fp = (AppM $ do
   cmdConf <- commandLineParser
   fileConf <- runAppM (parseJSONConfigFile fp)
-  return $ (<>) (defaultConf <> cmdConf) <$> fileConf)
-  --return $  pure defaultConf <> fileConf <> pure cmdConf )
+  case fileConf of
+    Left _ -> pure . pure $ defaultConf <> cmdConf
+    Right file -> pure . pure $ defaultConf <> file <> cmdConf)
+  -- pure $ (<>) (defaultConf <> cmdConf) <$> fileConf)
+  -- return $  pure defaultConf <> fileConf <> pure cmdConf )
   >>= liftEither . makeConfig
   -- Parse the options from the config file: "files/appconfig.json"
   -- Parse the options from the commandline using 'commandLineParser'
   -- Combine these with the default configuration 'defaultConf'
   -- Return the final configuration value
   -- error "parseOptions not implemented"
+  
