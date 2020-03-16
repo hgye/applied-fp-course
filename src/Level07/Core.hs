@@ -39,9 +39,10 @@ import qualified Level07.Conf                       as Conf
 import qualified Level07.DB                         as DB
 
 import qualified Level07.Responses                  as Res
-import           Level07.Types                      (Conf, ConfigError,
+import           Level07.Types                      (Conf(..), ConfigError,
                                                      ContentType (PlainText),
                                                      Error (..), RqType (..),
+                                                     --DBFilePath(..),
                                                      confPortToWai,
                                                      encodeComment, encodeTopic,
                                                      mkCommentText, mkTopic)
@@ -83,7 +84,16 @@ runApplication = do
 -- 'mtl' on Hackage: https://hackage.haskell.org/package/mtl
 --
 prepareAppReqs :: ExceptT StartUpError IO Env
-prepareAppReqs = error "prepareAppReqs not reimplemented with ExceptT"
+prepareAppReqs = -- error "prepareAppReqs not reimplemented with ExceptT"
+  let
+    fp = "files/appconfig.json"
+  in
+    ExceptT (first ConfErr <$> Conf.parseOptions fp) >>=
+    (\c -> ExceptT $ do
+        result <- DB.initDB . dbFilePath $ c
+        case result of
+          Left e -> pure . Left . DBInitErr $ e
+          Right db -> return . return $ Env (liftIO . hPutStrLn stderr) c db)
   -- You may copy your previous implementation of this function and try refactoring it. On the
   -- condition you have to explain to the person next to you what you've done and why it works.
 
@@ -94,8 +104,14 @@ prepareAppReqs = error "prepareAppReqs not reimplemented with ExceptT"
 app
   :: Env
   -> Application
-app =
-  error "Copy your completed 'app' from the previous level and refactor it here"
+app e rq cb =
+  runApp (handleRequest =<< mkRequest rq) e >>= cb . handleRespErr
+  where
+    handleRespErr :: Either Error Response -> Response
+    handleRespErr = either mkErrorResponse id
+
+
+  -- error "Copy your completed 'app' from the previous level and refactor it here"
 
 handleRequest
   :: RqType

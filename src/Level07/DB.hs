@@ -25,7 +25,7 @@ import qualified Database.SQLite.Simple             as Sql
 import qualified Database.SQLite.SimpleErrors       as Sql
 import           Database.SQLite.SimpleErrors.Types (SQLiteResponse)
 
-import           Level07.AppM                      (App, Env (envDB))
+import           Level07.AppM                      (App, Env (envDB), liftEither)
 
 import           Level07.Types                     (Comment, CommentText,
                                                      DBFilePath (getDBFilePath),
@@ -62,38 +62,66 @@ initDB fp = Sql.runDBAction $ do
 
 getDBConn
   :: App Connection
-getDBConn =
-  error "getDBConn not implemented"
+getDBConn = asks $ dbConn . envDB
+  -- error "getDBConn not implemented"
 
 runDB
   :: (a -> Either Error b)
   -> (Connection -> IO a)
   -> App b
-runDB =
-  error "runDB not re-implemented"
+runDB f g = do
+  conn <- getDBConn
+  r <- liftIO $ first DBError <$> Sql.runDBAction (g conn)
+  liftEither $ f =<< r
+  -- error "runDB not re-implemented"
 
 getComments
   :: Topic
   -> App [Comment]
-getComments =
-  error "Copy your completed 'getComments' and refactor to match the new type signature"
+getComments t =
+  let q = "SELECT id,topic,comment,time FROM comments WHERE topic = ?"
+      f conn = Sql.query conn q (Sql.Only . getTopic $ t)
+  in
+    runDB (traverse fromDBComment) f
+  --error "Copy your completed 'getComments' and refactor to match the new type signature"
 
 addCommentToTopic
   :: Topic
   -> CommentText
   -> App ()
-addCommentToTopic =
-  error "Copy your completed 'appCommentToTopic' and refactor to match the new type signature"
+addCommentToTopic t c =
+  let q =
+        -- Remember that the '?' are order dependent so if you get your input
+        -- parameters in the wrong order, the types won't save you here. More on that
+        -- sort of goodness later.
+        "INSERT INTO comments (topic,comment,time) VALUES (?,?,?)"
+      f conn = do
+        nowish <- getCurrentTime
+        Sql.execute conn q (getTopic t, getCommentText c, nowish)
+        in
+  -- We use the execute function this time as we don't care about anything
+  -- that is returned. The execute function will still return the number of rows
+  -- affected by the query, which in our case should always be 1.
+    runDB Right f
+  -- error "Copy your completed 'appCommentToTopic' and refactor to match the new type signature"
 
 getTopics
   :: App [Topic]
 getTopics =
-  error "Copy your completed 'getTopics' and refactor to match the new type signature"
+  let q = "SELECT DISTINCT topic FROM comments"
+      f conn =  Sql.query_ conn q
+  in
+    runDB (traverse ( mkTopic . Sql.fromOnly )) f
+  -- error "Copy your completed 'getTopics' and refactor to match the new type signature"
 
 deleteTopic
   :: Topic
   -> App ()
-deleteTopic =
-  error "Copy your completed 'deleteTopic' and refactor to match the new type signature"
+deleteTopic t =
+  let q = "DELETE FROM comments WHERE topic = ?"
+      f conn = Sql.execute conn q (Sql.Only . getTopic $ t)
+  in
+    runDB Right f
+  -- error "Copy your completed 'deleteTopic' and refactor to match the new type signature"
 
 -- Go on to 'src/Level07/Core.hs' next.
